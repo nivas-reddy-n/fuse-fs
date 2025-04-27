@@ -514,8 +514,31 @@ class DatabaseManager:
         finally:
             cursor.close()
     
+    def get_files_with_drive_ids(self):
+        """Get all files that have Google Drive IDs."""
+        self._ensure_connection()
+        if not self.connection:
+            return []
+            
+        cursor = self.connection.cursor(dictionary=True)
+        
+        try:
+            cursor.execute("""
+                SELECT path, google_drive_id
+                FROM files
+                WHERE google_drive_id IS NOT NULL AND google_drive_id != ''
+            """)
+            
+            return cursor.fetchall()
+            
+        except Error as e:
+            logger.error(f"Error getting files with drive ids from database: {e}")
+            return []
+        finally:
+            cursor.close()
+    
     def close(self):
         """Close the database connection."""
         if self.connection and self.connection.is_connected():
             self.connection.close()
-            logger.info("Database connection closed") 
+            logger.info("Database connection closed")

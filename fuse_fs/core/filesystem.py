@@ -124,15 +124,25 @@ class FuseFS(Operations):
         """Create a file."""
         full_path = self._full_path(path)
         
-        # Create the file
-        self.fd += 1
-        result = os.open(full_path, os.O_WRONLY | os.O_CREAT, mode)
-        self.open_files[self.fd] = result
-        
-        # Add file metadata to database
-        self.db.add_file(path, mode)
-        
-        return self.fd
+        try:
+            # Create the file properly with both read and write permissions
+            f = open(full_path, 'wb+')
+            f.close()
+            
+            # Set the proper permissions
+            os.chmod(full_path, mode)
+            
+            # Create a file descriptor
+            self.fd += 1
+            self.open_files[self.fd] = os.open(full_path, os.O_RDWR)
+            
+            # Add file metadata to database
+            self.db.add_file(path, mode)
+            
+            return self.fd
+        except Exception as e:
+            logger.error(f"Create error for {path}: {e}")
+            raise FuseOSError(errno.EIO)
 
     def open(self, path, flags):
         """Open a file and return a file descriptor."""
@@ -164,26 +174,36 @@ class FuseFS(Operations):
                 return data
         
         # If not in cache or cache read failed, read from disk
-        os.lseek(fh, offset, os.SEEK_SET)
-        return os.read(fh, length)
+        try:
+            with open(self._full_path(path), 'rb') as f:
+                f.seek(offset)
+                return f.read(length)
+        except Exception as e:
+            logger.error(f"Read error for {path}: {e}")
+            raise FuseOSError(errno.EIO)
 
     def write(self, path, buf, offset, fh):
         """Write data to a file."""
-        os.lseek(fh, offset, os.SEEK_SET)
-        bytes_written = os.write(fh, buf)
-        
-        # Update file in cache if it's there
-        if self.cache.has(path):
-            self.cache.invalidate(path)
-            
-        # Update file size and modification time in database
-        self.db.update_file_size(path, offset + bytes_written)
-        self.db.update_modification_time(path)
-        
-        # Mark file for synchronization
-        self.db.mark_for_sync(path)
-        
-        return bytes_written
+        try:
+            with open(self._full_path(path), 'r+b') as f:
+                f.seek(offset)
+                bytes_written = f.write(buf)
+                
+                # Update file in cache if it's there
+                if self.cache.has(path):
+                    self.cache.invalidate(path)
+                    
+                # Update file size and modification time in database
+                self.db.update_file_size(path, offset + bytes_written)
+                self.db.update_modification_time(path)
+                
+                # Mark file for synchronization
+                self.db.mark_for_sync(path)
+                
+                return bytes_written
+        except Exception as e:
+            logger.error(f"Write error for {path}: {e}")
+            raise FuseOSError(errno.EIO)
 
     def truncate(self, path, length, fh=None):
         """Truncate a file to the specified length."""
@@ -203,7 +223,13 @@ class FuseFS(Operations):
 
     def flush(self, path, fh):
         """Flush cached data to disk."""
-        return os.fsync(fh)
+        try:
+            if fh in self.open_files:
+                return os.fsync(self.open_files[fh])
+            return 0
+        except Exception as e:
+            logger.error(f"Flush error for {path}: {e}")
+            return 0
 
     def release(self, path, fh):
         """Release an open file."""
@@ -214,7 +240,15 @@ class FuseFS(Operations):
 
     def fsync(self, path, fdatasync, fh):
         """Sync file contents to disk."""
-        return self.flush(path, fh)
+        try:
+            full_path = self._full_path(path)
+            if os.path.exists(full_path):
+                with open(full_path, 'rb') as f:
+                    os.fsync(f.fileno())
+            return 0
+        except Exception as e:
+            logger.error(f"Fsync error for {path}: {e}")
+            return 0
         
     def unlink(self, path):
         """Delete a file."""
@@ -264,4 +298,4 @@ def mount_filesystem(storage_path=None, mount_point=None, foreground=True):
         allow_other=True,
     )
     
-    return True 
+    return True

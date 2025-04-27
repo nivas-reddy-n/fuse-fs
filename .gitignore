@@ -1,0 +1,36 @@
+# Python bytecode files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# Log files
+*.log
+
+# Sensitive files with credentials
+token.json
+credentials.json
+.env
+
+# Cache files
+fuse_fs/cache/
+
+# Compiled Python files
+*.pyc
+
+# System files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/

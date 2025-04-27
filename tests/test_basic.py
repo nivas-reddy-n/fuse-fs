@@ -6,8 +6,6 @@ import sys
 import unittest
 import tempfile
 import shutil
-import subprocess
-import time
 import logging
 
 # Add the project root to the path

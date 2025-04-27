@@ -1,176 +1,124 @@
 # FUSE Virtual File System
 
-A FUSE-based virtual file system with metadata storage, cloud synchronization, and LFU caching.
+A virtual file system built with FUSE (Filesystem in Userspace) that provides:
+- LFU (Least Frequently Used) caching for improved performance
+- Google Drive synchronization for cloud backup
+- Metadata storage for enhanced file management
 
 ## Features
 
-- **FUSE Integration**: Mount a virtual file system that works with standard tools and applications
-- **Metadata Storage**: Store and query file metadata using MySQL database
-- **LFU Caching**: Improve read performance with a Least Frequently Used caching system
-- **Google Drive Sync**: Asynchronously synchronize files to Google Drive
-- **File Deduplication**: Avoid storing duplicate files using SHA-256 hashing
-- **Security**: Optional file encryption for sensitive data
-
-## Requirements
-
-- Python 3.7+
-- MySQL Server
-- FUSE kernel module (for Linux) or macFUSE (for macOS)
-- Google account for Drive synchronization
+- **Virtual FUSE Filesystem**: Mount a virtual filesystem on your local machine
+- **LFU Caching**: Automatically cache frequently accessed files for faster access
+- **Google Drive Sync**: Automatically sync files to Google Drive for backup
+- **Metadata Storage**: Store additional file metadata for improved organization
 
 ## Installation
 
+### Prerequisites
+
+- Python 3.8 or higher
+- FUSE or equivalent (e.g., WinFSP on Windows)
+- Required Python packages (see requirements.txt)
+
+### Setup
+
 1. Clone the repository:
-   ```
-   git clone <repository-url>
+   ```bash
+   git clone https://github.com/yourusername/fuse-fs.git
    cd fuse-fs
    ```
 
-2. Install dependencies:
-   ```
+2. Install required Python packages:
+   ```bash
    pip install -r requirements.txt
    ```
 
-3. Set up MySQL database:
-   ```
-   mysql -u root -p
-   ```
-   
-   ```sql
-   CREATE DATABASE fuse_fs;
-   CREATE USER 'fuse_user'@'localhost' IDENTIFIED BY 'your-password';
-   GRANT ALL PRIVILEGES ON fuse_fs.* TO 'fuse_user'@'localhost';
-   FLUSH PRIVILEGES;
-   ```
-
-4. Create a `.env` file with your configuration:
-   ```
-   DB_HOST=localhost
-   DB_USER=fuse_user
-   DB_PASSWORD=your-password
-   DB_NAME=fuse_fs
-   MOUNT_POINT=~/fuse_mount
-   STORAGE_PATH=~/fuse_storage
-   ENCRYPTION_ENABLED=False
-   LOG_LEVEL=INFO
-   ```
-
-5. Set up Google Drive API:
-   - Go to [Google Developer Console](https://console.developers.google.com/)
-   - Create a new project
+3. Set up Google Drive API credentials:
+   - Create a project in the Google Cloud Console
    - Enable the Google Drive API
-   - Create OAuth credentials
-   - Download the credentials JSON file and save it as `credentials.json` in the project directory
+   - Create OAuth 2.0 credentials and download as `credentials.json`
+   - Place the credentials.json file in the project root directory
+
+4. Configure the environment variables (copy env.example to .env and update):
+   ```bash
+   cp env.example .env
+   # Edit .env with your configuration
+   ```
 
 ## Usage
 
-### Mount the filesystem
+### Basic Usage
 
-```
-python -m fuse_fs --mount ~/fuse_mount --storage ~/fuse_storage
+Run the `run.sh` script in the scripts directory to start the filesystem:
+
+```bash
+./scripts/run.sh
 ```
 
-Available options:
-- `-m, --mount`: Mount point (default: ~/fuse_mount)
-- `-s, --storage`: Storage directory (default: ~/fuse_storage)
-- `-f, --foreground`: Run in foreground (for debugging)
-- `-d, --debug`: Enable debug logging
+By default, this will:
+- Mount the filesystem at `~/fuse_mount`
+- Store data at `~/fuse_storage`
+- Enable Google Drive sync
+- Enable LFU caching
+
+### Command-Line Options
+
+You can customize the behavior with command-line options:
+
+```bash
+./scripts/run.sh --mount /custom/mount/point --storage /custom/storage/path --debug --foreground
+```
+
+Optional arguments:
+- `--mount PATH`: Custom mount point
+- `--storage PATH`: Custom storage path
+- `--foreground`: Run in foreground (useful for debugging)
+- `--debug`: Enable debug logging
 - `--no-sync`: Disable Google Drive synchronization
 - `--no-cache`: Disable LFU caching
 
-### Using the filesystem
+### Demo
 
-Once mounted, you can use the filesystem like any other directory:
+Run the demo script to see the filesystem in action:
 
-```
-cd ~/fuse_mount
-touch test.txt
-echo "Hello World" > test.txt
-cat test.txt
+```bash
+./examples/demo.sh
 ```
 
-Files are automatically:
-1. Stored in the configured storage directory
-2. Indexed in the MySQL database with metadata
-3. Cached using LFU algorithm if frequently accessed
-4. Synchronized to Google Drive in the background
+For Windows users:
 
-### Unmount the filesystem
-
-```
-fusermount -u ~/fuse_mount   # Linux
-umount ~/fuse_mount          # macOS
+```powershell
+.\examples\demo.ps1
 ```
 
-## Architecture
-
-The system consists of several components:
-
-1. **Core FUSE Implementation**: Implements filesystem operations
-2. **Database Manager**: Handles metadata storage in MySQL
-3. **LFU Cache**: Improves read performance for frequently accessed files
-4. **Google Drive Sync**: Asynchronously synchronizes files to cloud storage
-5. **Crypto Utilities**: Provides file encryption and decryption
-
-## Development
-
-### Project Structure
+## Project Structure
 
 ```
-fuse_fs/
-├── __init__.py
-├── __main__.py
-├── config.py
-├── core/
-│   └── filesystem.py
-├── database/
-│   └── db_manager.py
-├── cache/
-│   └── lfu_cache.py
-├── cloud/
-│   └── google_drive.py
-└── utils/
-    ├── crypto.py
-    └── logger.py
+fuse-fs/
+├── examples/             # Example usage scripts
+│   ├── demo.ps1          # PowerShell demo script
+│   └── demo.sh           # Bash demo script
+├── fuse_fs/              # Main package
+│   ├── cache/            # LFU caching implementation
+│   ├── cloud/            # Cloud storage integration
+│   ├── core/             # Core filesystem implementation
+│   ├── database/         # Metadata storage
+│   └── utils/            # Utility functions
+├── scripts/              # Utility scripts
+│   ├── run.sh            # Main startup script
+│   └── setup_db.py       # Database setup script
+├── tests/                # Test files
+├── .gitignore            # Git ignore file
+├── env.example           # Example environment variables
+├── README.md             # This file
+├── requirements.txt      # Python dependencies
+└── setup.py              # Package setup script
 ```
 
-### Running Tests
+## Contributing
 
-```
-pytest tests/
-```
-
-## Performance Metrics
-
-The system tracks several performance metrics:
-
-- **Throughput (MB/s)**: Measures the speed of data transfer
-- **Cache Hit Ratio (%)**: Measures how effectively the LFU cache serves requests
-- **Sync Success Rate (%)**: Measures how often file sync to Google Drive is successful
-
-You can view these metrics in the log file.
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Mount fails with "Operation not permitted"**:
-   - Ensure you have FUSE installed and proper permissions
-   - Try running with sudo or adding your user to the fuse group
-
-2. **Database connection fails**:
-   - Check your .env file for correct database credentials
-   - Ensure MySQL server is running
-
-3. **Google Drive sync doesn't work**:
-   - Verify credentials.json is in the correct location
-   - Check internet connection
-   - Look for specific error messages in the log file
-
-### Logs
-
-Logs are stored in `fuse_fs.log` by default. Enable debug logging with the `-d` flag for more detailed information.
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details. 
+This project is licensed under the MIT License - see the LICENSE file for details.

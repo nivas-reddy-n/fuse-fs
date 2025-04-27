@@ -60,8 +60,23 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# Safety cleanup - unmount any existing FUSE mount
+if [ -d "$MOUNT_POINT" ]; then
+    echo "Checking if mount point is already in use..."
+    if mountpoint -q "$MOUNT_POINT" 2>/dev/null; then
+        echo "Unmounting existing FUSE mount point..."
+        fusermount -u "$MOUNT_POINT" 2>/dev/null || sudo umount -l "$MOUNT_POINT" 2>/dev/null || true
+        sleep 1
+    fi
+fi
+
+# Create directories if they don't exist
+echo "Creating mount point and storage directories..."
+mkdir -p "$MOUNT_POINT"
+mkdir -p "$STORAGE_PATH"
+
 # Build command
-CMD="python -m fuse_fs --mount \"$MOUNT_POINT\" --storage \"$STORAGE_PATH\""
+CMD="./venv/bin/python -m fuse_fs --mount \"$MOUNT_POINT\" --storage \"$STORAGE_PATH\""
 
 if $FOREGROUND; then
     CMD="$CMD --foreground"
@@ -79,10 +94,6 @@ if $NO_CACHE; then
     CMD="$CMD --no-cache"
 fi
 
-# Create directories if they don't exist
-mkdir -p "$MOUNT_POINT"
-mkdir -p "$STORAGE_PATH"
-
 # Display configuration
 echo "Starting FUSE filesystem with the following configuration:"
 echo "  Mount point: $MOUNT_POINT"
@@ -96,4 +107,5 @@ echo ""
 # Run the command
 echo "Running: $CMD"
 echo ""
-eval $CMD 
+OUTPUT=$(eval $CMD)
+echo "$OUTPUT"
