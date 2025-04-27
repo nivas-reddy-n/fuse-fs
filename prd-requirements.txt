@@ -43,13 +43,3 @@ Week	Tasks
     fh: file handle
     offset: The offset variable is used to track the position in the sentence. To begin with, the offset is -1. On each iteration of the while loop, the offset is set to the next index position for the starting character of the desired word.
     ENOENT: stands for "Error No Entry" and it is a standard error in Python that arises when the system cannot find a file or directory path specified in the code.
-
-fusepy==3.0.1
-mysql-connector-python==8.0.32
-google-api-python-client==2.86.0
-google-auth-httplib2==0.1.0
-google-auth-oauthlib==1.0.0
-pycryptodome==3.18.0
-python-dotenv==1.0.0
-pytest==7.3.1
-pylint==2.17.4
